@@ -8,7 +8,7 @@ bpf_text = """
 #include <linux/sched.h>
 #include <linux/utsname.h>
 #include <linux/pid_namespace.h>
-struct data_t{//パケットにまつわるデータについての構造体
+struct packet_data{//パケットにまつわるデータについての構造体
     u32 pid;//PIDについてのunsigned int型の変数
     char comm[TASK_COMM_LEN];//コマンドについてのキャラ型の変数
     u32 saddr;//送信アドレスについてのunsigned int型の変数
@@ -25,7 +25,7 @@ BPF_PERF_OUTPUT(events);//イベントが発生した場合、自分達で自由
 //HASHを使うときはアドレス=ポインタで表現出来るように渡さないといけない
 
 // kprobe function
-int tcp_connect(struct pt_regs *ctx, struct sock *sock){//tcpが通信する際にシステムコールが呼ばれた時に作動
+int tcp_connect(struct pt_regs *ctx, struct sock *sock){//tcpが通信する際にカーネル内の関数が呼ばれた時に作動
     u32 pid = bpf_get_current_pid_tgid();//pidを取得する
     //実際は64ビットが返り値であるだが、
     //上位32bitスレッドID
@@ -36,10 +36,10 @@ int tcp_connect(struct pt_regs *ctx, struct sock *sock){//tcpが通信する際�
 }
 
 // kretprobe function
-int tcp_connect_ret(struct pt_regs *ctx){//tcpの通信するシステムコールが呼び出され処理した後実行
+int tcp_connect_ret(struct pt_regs *ctx){//tcpの通信するカーネル内の関数が呼び出され処理した後実行
     u32 pid = bpf_get_current_pid_tgid();//pidを取得
     struct sock **sock, *sockp;
-    struct data_t data = {};
+    struct packet_data data = {};
     sock = socklist.lookup(&pid);//pidのアドレスがsocklistのキーに入っているか探索、キーに対応する値(ソケットのアドレス)のポインタを返す
     if(sock == 0){//無かったreturn
         return 0;
@@ -78,7 +78,7 @@ def test(addr):
 
 # 出力用の関数
 def get_print_event(b: BPF):
-    def print_event(cpu, data, size):
+    def print_event(a,data, size):
         event = b["events"].event(data)
         printb(b"%-6d %-16s %-16s %-16s %-16d" % (
             event.pid, event.comm, test(event.saddr), ntoa(event.daddr), event.dport))

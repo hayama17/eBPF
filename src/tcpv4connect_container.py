@@ -51,13 +51,13 @@ int tcp_connect_ret(struct pt_regs *ctx){//tcpの通信するシステムコー�
         UTS:ホスト名、ドメイン名、コンテナID(大体そうみたい)
         PIDns:プロセスのネームスペース
     */ 
-    if(sock == 0||pidns->level == 0 ){//無かったorネームスペースの深さが0(ホストプロセス)だからreturn
+    if(sock == 0||(*uts).ns.inum == 0 ){//無かったorネームスペースの深さが0(ホストプロセス)だからreturn
         return 0;
     }
     sockp = *sock;//pidに対応するソケットの構造体のアドレスを代入される
     data.pid = pid;//data.pidにpidを代入
     bpf_get_current_comm(&data.comm, sizeof(data.comm));//第1引数のアドレスにプログラム名をコピーしてくれる。
-    bpf_probe_read(&data.nodename,sizeof(data.nodename),(void *)uts->name.nodename );//第1引数に値を挿入できる
+    bpf_probe_read(&data.nodename,sizeof(data.nodename),(void *)uts->name.nodename );
     data.saddr = sockp->__sk_common.skc_rcv_saddr;//アドレスだから参照の->で
     data.daddr = sockp->__sk_common.skc_daddr;
     u16 dport = sockp->__sk_common.skc_dport;
